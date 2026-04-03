@@ -1,0 +1,5 @@
+{
+  "headers": {
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MzM2ODAxLCJlbWFpbCI6Ikdsb29iZW5nbG9vYkBnbWFpbC5jb20iLCJpYXQiOjE3NzUwNzc1NzYsImV4cCI6MTc3NTA4NDc3Nn0._YACamwBgjk7O52bNYAEVlVP78ESCuC6mA5TUe7j7YE"
+  }
+}

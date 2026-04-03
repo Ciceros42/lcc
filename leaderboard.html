@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaderboard &mdash; LCC Bouldering</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="site-logo" href="index.html">LCC <span>Bouldering</span></a>
+    <nav class="site-nav">
+      <a href="index.html">Areas</a>
+      <a href="index.html#search-section">Search</a>
+      <a href="leaderboard.html" class="nav-active">Leaderboard</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page-wrap">
+  <h1 class="page-title">Leaderboard</h1>
+
+  <div class="lb-controls">
+    <span class="lb-sort-label">Sort by</span>
+    <button class="lb-sort-btn lb-sort-active" id="sort-points">Points</button>
+    <button class="lb-sort-btn" id="sort-sends">Sends</button>
+  </div>
+
+  <div class="lb-wrap">
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th class="lb-th lb-th-rank">Rank</th>
+          <th class="lb-th lb-th-username">Climber</th>
+          <th class="lb-th lb-th-points">Points</th>
+          <th class="lb-th lb-th-sends">Sends</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr id="leaderboard-loading">
+          <td colspan="4" class="lb-loading">Loading&hellip;</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<footer class="site-footer">
+  LCC Bouldering &mdash; Little Cottonwood Canyon, Utah &mdash; Completing All Climbs Of A Grade Is Worth 500 x 1.5^vgrade  
+</footer>
+
+<script src="data/problems.js" charset="utf-8"></script>
+<script src="data/users.js" charset="utf-8"></script>
+<script src="js/leaderboard.js" charset="utf-8"></script>
+<script src="js/scroll-top.js" charset="utf-8"></script>
+</body>
+</html>

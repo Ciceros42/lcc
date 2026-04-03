@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <rect width="800" height="480" fill="#272727"/>
+  <!-- Rock face background texture suggestion -->
+  <rect x="0" y="60" width="800" height="360" fill="#2e2e2e" rx="2"/>
+  <!-- Boulder outline -->
+  <path d="M80 420 Q60 380 90 300 Q110 240 160 200 Q220 155 300 140 Q380 125 460 145 Q540 160 590 200 Q640 240 660 300 Q690 370 680 420 Z"
+        fill="#333" stroke="#4a4a4a" stroke-width="2"/>
+  <!-- Route line (dashed) -->
+  <polyline points="350,415 345,380 355,340 340,300 348,260 360,230 370,200 375,175 372,150"
+            fill="none" stroke="#c8a96e" stroke-width="3" stroke-dasharray="8,5" stroke-linecap="round"/>
+  <!-- Holds dots -->
+  <circle cx="350" cy="415" r="6" fill="#c8a96e" opacity="0.9"/>
+  <circle cx="345" cy="380" r="5" fill="#c8a96e" opacity="0.8"/>
+  <circle cx="355" cy="340" r="5" fill="#c8a96e" opacity="0.8"/>
+  <circle cx="340" cy="300" r="5" fill="#c8a96e" opacity="0.8"/>
+  <circle cx="348" cy="260" r="5" fill="#c8a96e" opacity="0.8"/>
+  <circle cx="360" cy="230" r="5" fill="#c8a96e" opacity="0.8"/>
+  <circle cx="370" cy="200" r="5" fill="#c8a96e" opacity="0.8"/>
+  <circle cx="375" cy="175" r="5" fill="#c8a96e" opacity="0.8"/>
+  <circle cx="372" cy="150" r="6" fill="#e8a020" opacity="0.9"/>
+  <!-- START label -->
+  <text x="362" y="438" font-family="sans-serif" font-size="11" fill="#9a9a9a" text-anchor="middle">START</text>
+  <!-- TOP label -->
+  <text x="388" y="145" font-family="sans-serif" font-size="11" fill="#9a9a9a" text-anchor="start">TOP</text>
+  <!-- Topo label -->
+  <text x="400" y="468" font-family="sans-serif" font-size="12" fill="#5a5a5a" text-anchor="middle">Topo photo — coming soon</text>
+</svg>

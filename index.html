@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LCC Bouldering — Little Cottonwood Canyon, Utah</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="site-logo" href="index.html">LCC <span>Bouldering</span></a>
+    <nav class="site-nav">
+      <a href="index.html">Areas</a>
+      <a href="index.html#search-section">Search</a>
+      <a href="leaderboard.html">Leaderboard</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page-wrap">
+
+  <h1 class="page-title">Little Cottonwood Canyon</h1>
+  <p class="page-subtitle">
+    Salt Lake County, Utah &nbsp;&middot;&nbsp; Granite bouldering &nbsp;&middot;&nbsp; 42 areas &nbsp;&middot;&nbsp; 5003 problems &nbsp;&middot;&nbsp; V0–V16
+  </p>
+
+  <div id="map"></div>
+
+  <!-- Search -->
+  <div id="search-section">
+    <div class="search-bar">
+      <div>
+        <label for="search-name">Search by name</label>
+        <input type="text" id="search-name" placeholder="e.g. Butt Trumpet…" autocomplete="off">
+      </div>
+      <div>
+        <label>Filter by grade</label>
+        <div class="grade-inputs">
+          <select id="grade-min" title="Minimum grade"></select>
+          <span class="grade-sep">to</span>
+          <select id="grade-max" title="Maximum grade"></select>
+        </div>
+      </div>
+      <button class="btn-clear" id="search-clear">Clear</button>
+    </div>
+
+    <div id="search-results">
+      <p class="results-heading"><span id="results-count"></span></p>
+      <ul class="result-list" id="results-list"></ul>
+    </div>
+  </div>
+
+  <!-- Areas — rendered from window.AREAS by inline script below -->
+  <h2 class="section-heading">Areas</h2>
+  <div class="area-grid" id="area-grid"></div>
+
+</main>
+
+<footer class="site-footer">
+  LCC Bouldering &mdash; Little Cottonwood Canyon, Utah
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data/problems.js"></script>
+<script>
+  // Render area cards from window.AREAS
+  (function () {
+    var grid = document.getElementById('area-grid');
+    if (!grid || !window.AREAS || !window.AREAS.length) return;
+    grid.innerHTML = window.AREAS.map(function (a) {
+      var desc = a.description
+        ? a.description.slice(0, 160).replace(/</g, '&lt;') + (a.description.length > 160 ? '…' : '')
+        : '';
+      return '<div class="area-card">'
+        + '<div class="area-card-name">' + a.name + '</div>'
+        + '<div class="area-card-meta">'
+        +   '<span>' + a.problemCount + ' problems</span>'
+        +   '<span>' + a.gradeRange + '</span>'
+        + '</div>'
+        + (desc ? '<p class="area-card-desc">' + desc + '</p>' : '')
+        + '<a class="area-card-link" href="' + a.url + '">View Area &rarr;</a>'
+        + '</div>';
+    }).join('');
+  })();
+</script>
+<script src="js/map.js"></script>
+<script src="js/search.js"></script>
+<script src="js/scroll-top.js"></script>
+</body>
+</html>
