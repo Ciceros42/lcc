@@ -22,7 +22,7 @@
     var vals = {};
     Object.keys(counts).forEach(function (g) {
       var exp = gradeExponent(g);
-      vals[g] = exp === null ? 0 : (500 * Math.pow(1.3, exp)) / counts[g];
+      vals[g] = exp === null ? 0 : (500 * Math.pow(1.5, exp)) / counts[g];
     });
     return vals;
   }
