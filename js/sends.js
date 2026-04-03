@@ -1,90 +1,63 @@
-/* sends.js — Log sends on boulder pages via localStorage.
-   Requires: data/users.js (window.USERS)
-   Storage:  localStorage key "lcc_sends"
-             { climbId: { name, grade, boulder_url, senders: [username, ...] } }
+/* sends.js — Log sends via Supabase.
+   Requires: supabase-js CDN, config.js, data/users.js (window.USERS)
 */
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'lcc_sends';
+  var sb = window.supabase.createClient(window.LCC_SUPABASE_URL, window.LCC_SUPABASE_KEY);
+  var boulderUrl = (window.location.pathname.match(/boulders\/[^/]+\.html/) || [''])[0];
 
-  function loadData() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-    catch (e) { return {}; }
+  // username -> Set of climb_ids they have sent (loaded once on page load)
+  var sentByUser = {};
+
+  async function loadSends() {
+    var res = await sb.from('ascents').select('username, climb_id').in('username', window.USERS || []);
+    if (res.error) { console.error('loadSends:', res.error); return; }
+    sentByUser = {};
+    (window.USERS || []).forEach(function (u) { sentByUser[u] = new Set(); });
+    res.data.forEach(function (row) {
+      if (sentByUser[row.username]) sentByUser[row.username].add(row.climb_id);
+    });
+    refreshAllButtons();
   }
 
-  function saveData(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  function isSent(username, climbId) {
+    return sentByUser[username] && sentByUser[username].has(climbId);
   }
 
-  function getSenders(climbId) {
-    var data = loadData();
-    return (data[climbId] && data[climbId].senders) || [];
-  }
-
-  function toggleSend(climbId, climbName, grade, boulderUrl, username) {
-    var data = loadData();
-    if (!data[climbId]) {
-      data[climbId] = { name: climbName, grade: grade, boulder_url: boulderUrl, senders: [] };
-    }
-    var idx = data[climbId].senders.indexOf(username);
-    if (idx === -1) {
-      data[climbId].senders.push(username);
-    } else {
-      data[climbId].senders.splice(idx, 1);
-    }
-    saveData(data);
-    return data[climbId].senders;
-  }
-
-  // ── Picker dropdown ───────────────────────────────────────────────────────
+  // ── Picker ────────────────────────────────────────────────────────────────
   var activePicker = null;
 
   function closePicker() {
     if (activePicker) { activePicker.remove(); activePicker = null; }
   }
 
-  function openPicker(btn, climbId, climbName, grade, boulderUrl) {
+  function openPicker(btn, climbId, climbName, grade) {
     closePicker();
-
     var users = window.USERS || [];
-    if (!users.length) {
-      var msg = document.createElement('div');
-      msg.className = 'send-picker';
-      msg.textContent = 'No users added yet.';
-      positionAndShow(msg, btn);
-      return;
-    }
-
-    var senders = getSenders(climbId);
+    if (!users.length) return;
 
     var picker = document.createElement('div');
     picker.className = 'send-picker';
 
     users.forEach(function (username) {
-      var isSent = senders.indexOf(username) !== -1;
+      var sent = isSent(username, climbId);
       var row = document.createElement('button');
-      row.className = 'send-picker-row' + (isSent ? ' send-picker-row-sent' : '');
-      row.innerHTML = (isSent ? '<span class="send-check">&#10003;</span> ' : '<span class="send-check send-check-empty"></span> ') + username;
+      row.className = 'send-picker-row' + (sent ? ' send-picker-row-sent' : '');
+      row.innerHTML = (sent ? '<span class="send-check">&#10003;</span> ' : '<span class="send-check send-check-empty"></span> ') + username;
       row.addEventListener('mousedown', function (e) {
         e.preventDefault();
-        var newSenders = toggleSend(climbId, climbName, grade, boulderUrl, username);
-        updateBtn(btn, newSenders);
+        toggleSend(username, climbId, climbName, grade, btn);
         closePicker();
       });
       picker.appendChild(row);
     });
 
-    positionAndShow(picker, btn);
-  }
-
-  function positionAndShow(picker, btn) {
     document.body.appendChild(picker);
     activePicker = picker;
-
     var rect = btn.getBoundingClientRect();
     picker.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
-    picker.style.left = (rect.left + window.scrollX) + 'px';
+    picker.style.left = (rect.left  + window.scrollX) + 'px';
   }
 
   document.addEventListener('click', function (e) {
@@ -93,24 +66,54 @@
     }
   });
 
+  // ── Toggle send ───────────────────────────────────────────────────────────
+  async function toggleSend(username, climbId, climbName, grade, btn) {
+    if (isSent(username, climbId)) {
+      var res = await sb.from('ascents').delete()
+        .eq('username', username).eq('climb_id', climbId);
+      if (!res.error) {
+        sentByUser[username].delete(climbId);
+        updateBtn(btn, climbId);
+      }
+    } else {
+      var res = await sb.from('ascents').insert({
+        username:    username,
+        climb_id:    climbId,
+        climb_name:  climbName,
+        grade_label: grade,
+        boulder_url: boulderUrl
+      });
+      if (!res.error) {
+        sentByUser[username].add(climbId);
+        updateBtn(btn, climbId);
+      }
+    }
+  }
+
   // ── Button label ──────────────────────────────────────────────────────────
-  function updateBtn(btn, senders) {
-    if (!senders || !senders.length) {
+  function getSenders(climbId) {
+    return (window.USERS || []).filter(function (u) { return isSent(u, climbId); });
+  }
+
+  function updateBtn(btn, climbId) {
+    var senders = getSenders(climbId);
+    if (!senders.length) {
       btn.textContent = '+ Log Send';
       btn.classList.remove('send-btn-sent');
     } else {
-      btn.textContent = '&#10003; ' + senders.join(', ');
-      btn.innerHTML   = '&#10003; ' + senders.map(function (s) {
-        return '<span>' + s + '</span>';
-      }).join(', ');
+      btn.innerHTML = '&#10003; ' + senders.join(', ');
       btn.classList.add('send-btn-sent');
     }
   }
 
+  function refreshAllButtons() {
+    document.querySelectorAll('.send-btn').forEach(function (btn) {
+      updateBtn(btn, btn.dataset.climbId);
+    });
+  }
+
   // ── Inject buttons ────────────────────────────────────────────────────────
   function injectButtons() {
-    var boulderUrl = (window.location.pathname.match(/boulders\/[^/]+\.html/) || [''])[0];
-
     document.querySelectorAll('.problem-entry').forEach(function (article) {
       if (article.querySelector('.send-btn')) return;
       var climbId   = article.dataset.climbId;
@@ -120,11 +123,11 @@
 
       var btn = document.createElement('button');
       btn.className = 'send-btn';
-      updateBtn(btn, getSenders(climbId));
-
+      btn.dataset.climbId = climbId;
+      btn.textContent = '+ Log Send';
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
-        openPicker(btn, climbId, climbName, grade, boulderUrl);
+        openPicker(btn, climbId, climbName, grade);
       });
 
       var topoDiv = article.querySelector('.problem-topo');
@@ -134,9 +137,10 @@
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectButtons);
+    document.addEventListener('DOMContentLoaded', function () { injectButtons(); loadSends(); });
   } else {
     injectButtons();
+    loadSends();
   }
 
 })();
