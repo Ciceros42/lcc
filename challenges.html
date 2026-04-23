@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Challenges &mdash; LCC Bouldering</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .challenges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .challenge-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .challenge-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .challenge-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0;
+    }
+    .challenge-points {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .challenge-desc {
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+      margin: 0;
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="site-logo" href="index.html">LCC <span>Bouldering</span></a>
+    <nav class="site-nav">
+      <a href="index.html">Areas</a>
+      <a href="index.html#search-section">Search</a>
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="challenges.html" class="nav-active">Challenges</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page-wrap">
+  <h1 class="page-title">Challenges</h1>
+  <p class="page-subtitle">Complete these challenges to earn bonus points on the leaderboard.</p>
+
+  <div class="challenges-grid" id="challenges-grid"></div>
+</main>
+
+<footer class="site-footer">
+  LCC Bouldering &mdash; Little Cottonwood Canyon, Utah
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js" charset="utf-8"></script>
+<script src="data/users.js" charset="utf-8"></script>
+<script>
+  // ─── ADD OR EDIT CHALLENGES HERE ───────────────────────────────────────────
+  // Each challenge needs: title, points, and description.
+  // The id is auto-generated from the title — don't change a title after
+  // someone has already logged it or their completion will be lost.
+  const CHALLENGES = [
+    {
+      title: "Flash V6",
+      points: 50,
+      description: "Flash any V6 in the canyon."
+    },
+    // Add more challenges below this line, following the same format:
+    // {
+    //   title: "Challenge Name",
+    //   points: 100,
+    //   description: "What the climber needs to do to earn this challenge."
+    // },
+  ];
+  // ───────────────────────────────────────────────────────────────────────────
+
+  function slugify(title) {
+    return 'challenge-' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  var sb = window.supabase.createClient(window.LCC_SUPABASE_URL, window.LCC_SUPABASE_KEY);
+
+  // username -> Set<challenge_id>
+  var completedByUser = {};
+
+  async function loadCompletions() {
+    var res = await sb.from('challenge_completions')
+      .select('username, challenge_id')
+      .in('username', window.USERS || []);
+    if (res.error) { console.error('loadCompletions:', res.error); return; }
+    (window.USERS || []).forEach(function (u) { completedByUser[u] = new Set(); });
+    res.data.forEach(function (row) {
+      if (completedByUser[row.username]) completedByUser[row.username].add(row.challenge_id);
+    });
+    refreshAllButtons();
+  }
+
+  function isCompleted(username, challengeId) {
+    return completedByUser[username] && completedByUser[username].has(challengeId);
+  }
+
+  // ── Picker (same pattern as sends.js) ────────────────────────────────────
+  var activePicker = null;
+
+  function closePicker() {
+    if (activePicker) { activePicker.remove(); activePicker = null; }
+  }
+
+  function openPicker(btn, challenge) {
+    closePicker();
+    var users = window.USERS || [];
+    if (!users.length) return;
+
+    var picker = document.createElement('div');
+    picker.className = 'send-picker';
+
+    users.forEach(function (username) {
+      var done = isCompleted(username, challenge.id);
+      var row = document.createElement('button');
+      row.className = 'send-picker-row' + (done ? ' send-picker-row-sent' : '');
+      row.innerHTML = (done
+        ? '<span class="send-check">&#10003;</span> '
+        : '<span class="send-check send-check-empty"></span> ')
+        + username;
+      row.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        toggleCompletion(username, challenge, btn);
+        closePicker();
+      });
+      picker.appendChild(row);
+    });
+
+    document.body.appendChild(picker);
+    activePicker = picker;
+    var rect = btn.getBoundingClientRect();
+    picker.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+    picker.style.left = (rect.left  + window.scrollX) + 'px';
+  }
+
+  document.addEventListener('click', function (e) {
+    if (activePicker && !activePicker.contains(e.target) && !e.target.classList.contains('send-btn')) {
+      closePicker();
+    }
+  });
+
+  // ── Toggle completion ─────────────────────────────────────────────────────
+  async function toggleCompletion(username, challenge, btn) {
+    if (isCompleted(username, challenge.id)) {
+      var res = await sb.from('challenge_completions').delete()
+        .eq('username', username).eq('challenge_id', challenge.id);
+      if (res.error) {
+        console.error('challenge delete failed:', res.error);
+      } else {
+        completedByUser[username].delete(challenge.id);
+        updateBtn(btn, challenge);
+      }
+    } else {
+      var res = await sb.from('challenge_completions').insert({
+        username:        username,
+        challenge_id:    challenge.id,
+        challenge_title: challenge.title,
+        points:          challenge.points
+      });
+      if (res.error) {
+        console.error('challenge insert failed:', res.error);
+      } else {
+        completedByUser[username].add(challenge.id);
+        updateBtn(btn, challenge);
+      }
+    }
+  }
+
+  // ── Button label ──────────────────────────────────────────────────────────
+  function getCompleters(challengeId) {
+    return (window.USERS || []).filter(function (u) { return isCompleted(u, challengeId); });
+  }
+
+  function updateBtn(btn, challenge) {
+    var completers = getCompleters(challenge.id);
+    if (!completers.length) {
+      btn.textContent = '+ Log Send';
+      btn.classList.remove('send-btn-sent');
+    } else {
+      btn.innerHTML = '&#10003; ' + completers.join(', ');
+      btn.classList.add('send-btn-sent');
+    }
+  }
+
+  function refreshAllButtons() {
+    document.querySelectorAll('.send-btn[data-challenge-id]').forEach(function (btn) {
+      var challenge = CHALLENGES.find(function (c) { return c.id === btn.dataset.challengeId; });
+      if (challenge) updateBtn(btn, challenge);
+    });
+  }
+
+  // ── Render cards ──────────────────────────────────────────────────────────
+  var grid = document.getElementById('challenges-grid');
+
+  if (!CHALLENGES.length) {
+    grid.innerHTML = '<p style="color:var(--text-dim)">No challenges yet.</p>';
+  } else {
+    CHALLENGES.forEach(function (challenge) {
+      challenge.id = slugify(challenge.title);
+
+      var card = document.createElement('div');
+      card.className = 'challenge-card';
+
+      var header = document.createElement('div');
+      header.className = 'challenge-header';
+      header.innerHTML =
+        '<h2 class="challenge-title">' + challenge.title + '</h2>'
+        + '<span class="challenge-points">+' + challenge.points + ' pts</span>';
+
+      var desc = document.createElement('p');
+      desc.className = 'challenge-desc';
+      desc.textContent = challenge.description;
+
+      var btn = document.createElement('button');
+      btn.className = 'send-btn';
+      btn.dataset.challengeId = challenge.id;
+      btn.textContent = '+ Log Send';
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openPicker(btn, challenge);
+      });
+
+      card.appendChild(header);
+      card.appendChild(desc);
+      card.appendChild(btn);
+      grid.appendChild(card);
+    });
+
+    loadCompletions();
+  }
+</script>
+
+<script src="js/scroll-top.js" charset="utf-8"></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-/* leaderboard.js — Fetches ascents from Supabase, computes points, renders leaderboard.
+/* leaderboard.js — Fetches ascents + challenge completions from Supabase, computes points, renders leaderboard.
    Requires: supabase-js CDN, config.js, data/users.js (window.USERS), data/problems.js (window.PROBLEMS)
 */
 (function () {
@@ -40,10 +40,14 @@
     var body    = document.getElementById('leaderboard-body');
     if (!body) return;
 
-    var res = await sb.from('ascents').select('username, climb_id, climb_name, grade_label, boulder_url');
-    if (res.error) {
+    var [ascentsRes, challengesRes] = await Promise.all([
+      sb.from('ascents').select('username, climb_id, climb_name, grade_label, boulder_url'),
+      sb.from('challenge_completions').select('username, challenge_id, challenge_title, points')
+    ]);
+
+    if (ascentsRes.error) {
       if (loading) loading.textContent = 'Failed to load leaderboard. Please refresh.';
-      console.error(res.error);
+      console.error(ascentsRes.error);
       return;
     }
 
@@ -54,16 +58,36 @@
     // Group ascents by username
     var byUser = {};
     users.forEach(function (u) { byUser[u] = []; });
-    res.data.forEach(function (row) {
+    ascentsRes.data.forEach(function (row) {
       if (byUser[row.username]) byUser[row.username].push(row);
     });
 
+    // Group challenge completions by username
+    var challengesByUser = {};
+    users.forEach(function (u) { challengesByUser[u] = []; });
+    if (!challengesRes.error && challengesRes.data) {
+      challengesRes.data.forEach(function (row) {
+        if (challengesByUser[row.username]) challengesByUser[row.username].push(row);
+      });
+    }
+
     var rows = users.map(function (username) {
       var ascents = byUser[username];
-      var points  = ascents.reduce(function (sum, a) {
+      var challenges = challengesByUser[username];
+      var boulderPoints = ascents.reduce(function (sum, a) {
         return sum + (gradeVals[a.grade_label] || 0);
       }, 0);
-      return { username: username, ascents: ascents, points: points };
+      var challengePoints = challenges.reduce(function (sum, c) {
+        return sum + (c.points || 0);
+      }, 0);
+      return {
+        username:        username,
+        ascents:         ascents,
+        challenges:      challenges,
+        points:          boulderPoints + challengePoints,
+        boulderPoints:   boulderPoints,
+        challengePoints: challengePoints
+      };
     });
 
     if (loading) loading.style.display = 'none';
@@ -175,10 +199,20 @@
         + '</li>';
     }).join('');
 
+    var challengeListHtml = row.challenges.map(function (c) {
+      return '<li class="lb-ascent-item">'
+        + '<span class="lb-ascent-link">' + esc(c.challenge_title) + '</span>'
+        + '<span class="lb-ascent-grade">+' + esc(String(c.points)) + ' pts</span>'
+        + '</li>';
+    }).join('');
+
     var gradeSection  = gradeRowsHtml || '<p class="lb-empty-sub">No sends yet.</p>';
     var ascentSection = ascentListHtml
       ? '<ul class="lb-ascent-list">' + ascentListHtml + '</ul>'
       : '<p class="lb-empty-sub">No sends yet.</p>';
+    var challengeSection = challengeListHtml
+      ? '<ul class="lb-ascent-list">' + challengeListHtml + '</ul>'
+      : '<p class="lb-empty-sub">No challenges completed.</p>';
 
     var detail = document.createElement('tr');
     detail.id = 'detail-' + idx;
@@ -198,6 +232,10 @@
       +   '<div class="lb-detail-list">'
       +     '<h4 class="lb-detail-section-title">All Sends</h4>'
       +     ascentSection
+      +   '</div>'
+      +   '<div class="lb-detail-list">'
+      +     '<h4 class="lb-detail-section-title">Challenges</h4>'
+      +     challengeSection
       +   '</div>'
       + '</div>'
       + '</div>';
